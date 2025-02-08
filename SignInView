@@ -1,0 +1,36 @@
+
+import SwiftUI
+
+struct SignInView: View {
+    @State private var email = ""
+    @State private var password = ""
+    @EnvironmentObject var authViewModel: AuthViewModel
+
+    var body: some View {
+        VStack {
+            Text("Sign In").font(.largeTitle).bold()
+
+            TextField("Email", text: $email)
+                .textFieldStyle(RoundedBorderTextFieldStyle())
+                .padding()
+
+            SecureField("Password", text: $password)
+                .textFieldStyle(RoundedBorderTextFieldStyle())
+                .padding()
+
+            Button("Sign In") {
+                authViewModel.signIn(email: email, password: password)
+            }
+            .padding()
+            .background(Color.green)
+            .foregroundColor(.white)
+            .cornerRadius(10)
+
+            if let errorMessage = authViewModel.errorMessage {
+                Text(errorMessage).foregroundColor(.red)
+            }
+        }
+        .padding()
+    }
+}
+
