@@ -1,0 +1,35 @@
+import SwiftUI
+
+class AuthViewModel: ObservableObject {
+    @Published var isAuthenticated = false
+    @Published var errorMessage: String?
+
+    private let userDefaults = UserDefaults.standard
+    private let storedEmailKey = "storedEmail"
+    private let storedPasswordKey = "storedPassword"
+
+    func signUp(email: String, password: String) {
+        if email.isEmpty || password.isEmpty {
+            errorMessage = "Email and Password cannot be empty"
+            return
+        }
+        userDefaults.set(email, forKey: storedEmailKey)
+        userDefaults.set(password, forKey: storedPasswordKey)
+        isAuthenticated = true
+    }
+
+    func signIn(email: String, password: String) {
+        let storedEmail = userDefaults.string(forKey: storedEmailKey)
+        let storedPassword = userDefaults.string(forKey: storedPasswordKey)
+
+        if email == storedEmail, password == storedPassword {
+            isAuthenticated = true
+        } else {
+            errorMessage = "Invalid email or password"
+        }
+    }
+
+    func signOut() {
+        isAuthenticated = false
+    }
+}
