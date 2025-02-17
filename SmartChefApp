@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct SmartChef1App: App {
+struct SmartChefApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
