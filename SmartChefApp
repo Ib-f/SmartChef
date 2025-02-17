@@ -1,17 +1,10 @@
 import SwiftUI
 
 @main
-struct MyApp: App {
-    @StateObject var authViewModel = AuthViewModel()
-
+struct SmartChef1App: App {
     var body: some Scene {
         WindowGroup {
-            if authViewModel.isAuthenticated {
-                HomeView().environmentObject(authViewModel)
-            } else {
-                SignInView().environmentObject(authViewModel)
-            }
+            ContentView()
         }
     }
 }
-
