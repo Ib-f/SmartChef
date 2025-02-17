@@ -1,35 +1,291 @@
 import SwiftUI
 
-class AuthViewModel: ObservableObject {
-    @Published var isAuthenticated = false
-    @Published var errorMessage: String?
-
-    private let userDefaults = UserDefaults.standard
-    private let storedEmailKey = "storedEmail"
-    private let storedPasswordKey = "storedPassword"
-
-    func signUp(email: String, password: String) {
-        if email.isEmpty || password.isEmpty {
-            errorMessage = "Email and Password cannot be empty"
-            return
+struct ContentView: View {
+    var body: some View {
+        NavigationView {
+            SignUpView()
         }
-        userDefaults.set(email, forKey: storedEmailKey)
-        userDefaults.set(password, forKey: storedPasswordKey)
-        isAuthenticated = true
     }
+}
 
-    func signIn(email: String, password: String) {
-        let storedEmail = userDefaults.string(forKey: storedEmailKey)
-        let storedPassword = userDefaults.string(forKey: storedPasswordKey)
+struct SignUpView: View {
+    @State private var email: String = ""
+    @State private var password: String = ""
+    @State private var confirmPassword: String = ""
+    @State private var isAuthenticated: Bool = false
+    @State private var errorMessage: String = ""
+    
+    var body: some View {
+        NavigationStack {
+            VStack {
+                Text("SMARTCHEF")
+                    .font(.largeTitle)
+                    .bold()
+                    .foregroundColor(.red)
+                    .padding(.bottom, 40)
+                
+                TextField("Email", text: $email)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .padding()
+                
+                SecureField("Password", text: $password)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .padding()
+                
+                SecureField("Confirm Password", text: $confirmPassword)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .padding()
+                
+                if !errorMessage.isEmpty {
+                    Text(errorMessage)
+                        .foregroundColor(.red)
+                        .padding()
+                }
+                
+                Button(action: {
+                    authenticateUser()
+                }) {
+                    Text("Sign up")
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.red)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
+                        .padding(.horizontal)
+                }
+                
+                NavigationLink("Already have an account? Sign in", destination: SignInView())
+                    .padding()
+                
+                NavigationLink("", destination: HomeView(), isActive: $isAuthenticated)
+            }
+            .padding()
+        }
+    }
+    
+    func authenticateUser() {
+        if !isValidEmail(email) {
+            errorMessage = "Invalid email. It must contain '@'."
+        } else if !isValidPassword(password) {
+            errorMessage = "Password must be at least 8 characters and contain a number."
+        } else if password != confirmPassword {
+            errorMessage = "Passwords do not match."
+        } else {
+            isAuthenticated = true
+        }
+    }
+}
 
-        if email == storedEmail, password == storedPassword {
+struct SignInView: View {
+    @State private var email: String = ""
+    @State private var password: String = ""
+    @State private var isAuthenticated: Bool = false
+    @State private var errorMessage: String = ""
+    
+    var body: some View {
+        NavigationStack {
+            VStack {
+                Text("SMARTCHEF")
+                    .font(.largeTitle)
+                    .bold()
+                    .foregroundColor(.red)
+                    .padding(.bottom, 40)
+                
+                TextField("Email", text: $email)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .padding()
+                
+                SecureField("Password", text: $password)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .padding()
+                
+                if !errorMessage.isEmpty {
+                    Text(errorMessage)
+                        .foregroundColor(.red)
+                        .padding()
+                }
+                
+                Button(action: {
+                    authenticateUser()
+                }) {
+                    Text("Sign in")
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.red)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
+                        .padding(.horizontal)
+                }
+                
+                NavigationLink("Forgot your password? Reset", destination: ResetPasswordView())
+                    .padding()
+                
+                NavigationLink("", destination: HomeView(), isActive: $isAuthenticated)
+            }
+            .padding()
+        }
+    }
+    
+    func authenticateUser() {
+        if isValidEmail(email) && isValidPassword(password) {
             isAuthenticated = true
         } else {
-            errorMessage = "Invalid email or password"
+            errorMessage = "Invalid email or password. Email must contain '@'. Password must be at least 8 characters and contain a number."
         }
     }
+}
 
-    func signOut() {
-        isAuthenticated = false
+func isValidEmail(_ email: String) -> Bool {
+    return email.contains("@")
+}
+
+func isValidPassword(_ password: String) -> Bool {
+    return password.count >= 8 && password.rangeOfCharacter(from: .decimalDigits) != nil
+}
+
+struct HomeView: View {
+    var body: some View {
+        VStack {
+            Text("Welcome to SMARTCHEF")
+                .font(.largeTitle)
+                .bold()
+                .foregroundColor(.red)
+                .padding()
+            
+            Button(action: {
+                // Navigate to add ingredients
+            }) {
+                Text("Add Ingredients")
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.red)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
+                    .padding(.horizontal)
+            }
+            
+            Button(action: {
+                // Navigate to dietary preferences
+            }) {
+                Text("Select Dietary Preferences")
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.red)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
+                    .padding(.horizontal)
+            }
+            
+            Button(action: {
+                // Navigate to generated recipes
+            }) {
+                Text("View Recipes")
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.red)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
+                    .padding(.horizontal)
+            }
+        }
+        .padding()
     }
+}
+
+struct ResetPasswordView: View {
+    @State private var email: String = ""
+    @State private var isEmailValid: Bool = false
+    @State private var errorMessage: String = ""
+    
+    var body: some View {
+        NavigationStack {
+            VStack {
+                Text("SMARTCHEF")
+                    .font(.largeTitle)
+                    .bold()
+                    .foregroundColor(.red)
+                    .padding(.bottom, 40)
+                
+                TextField("Enter your email", text: $email)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .padding()
+                
+                if !errorMessage.isEmpty {
+                    Text(errorMessage)
+                        .foregroundColor(.red)
+                        .padding()
+                }
+                
+                Button(action: {
+                    validateEmail()
+                }) {
+                    Text("Send Reset Email")
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.red)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
+                        .padding(.horizontal)
+                }
+                
+                NavigationLink("", destination: ConfirmationView(), isActive: $isEmailValid)
+            }
+            .padding()
+        }
+    }
+    
+    func validateEmail() {
+        if isValidEmail(email) {
+            isEmailValid = true
+        } else {
+            errorMessage = "Invalid email format. Please enter a valid email."
+        }
+    }
+}
+
+struct ConfirmationView: View {
+    var body: some View {
+        VStack {
+            Text("SMARTCHEF")
+                .font(.largeTitle)
+                .bold()
+                .foregroundColor(.red)
+                .padding()
+            
+            Text("The Email has been sent!")
+                .multilineTextAlignment(.center)
+                .padding()
+            
+            Image(systemName: "checkmark.circle.fill")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 100, height: 100)
+                .foregroundColor(.red)
+                .padding()
+            
+            Button(action: {
+                // Navigate back to login
+            }) {
+               
+                
+                NavigationLink(destination: SignInView()) {
+                    Text("Sign in")
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.red)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
+                        .padding(.horizontal)
+                }
+            }
+            .padding()
+            
+        }
+            }
+        }
+   
+
+
+#Preview {
+    ContentView()
 }
