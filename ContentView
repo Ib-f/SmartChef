@@ -1,5 +1,10 @@
 import SwiftUI
 
+
+extension Color {
+    static let smartChefRed = Color(red: 0.85, green: 0.1, blue: 0.1)
+    static let smartChefLightGray = Color(UIColor.systemGray6)
+}
 struct ContentView: View {
     var body: some View {
         NavigationView {
@@ -7,14 +12,13 @@ struct ContentView: View {
         }
     }
 }
-
+// MARK: - Authentication Views
 struct SignUpView: View {
     @State private var email: String = ""
     @State private var password: String = ""
     @State private var confirmPassword: String = ""
     @State private var isAuthenticated: Bool = false
     @State private var errorMessage: String = ""
-    
     var body: some View {
         NavigationStack {
             VStack {
@@ -23,25 +27,20 @@ struct SignUpView: View {
                     .bold()
                     .foregroundColor(.red)
                     .padding(.bottom, 40)
-                
                 TextField("Email", text: $email)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
                     .padding()
-                
                 SecureField("Password", text: $password)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
                     .padding()
-                
                 SecureField("Confirm Password", text: $confirmPassword)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
                     .padding()
-                
                 if !errorMessage.isEmpty {
                     Text(errorMessage)
                         .foregroundColor(.red)
                         .padding()
                 }
-                
                 Button(action: {
                     authenticateUser()
                 }) {
@@ -53,16 +52,13 @@ struct SignUpView: View {
                         .cornerRadius(10)
                         .padding(.horizontal)
                 }
-                
                 NavigationLink("Already have an account? Sign in", destination: SignInView())
                     .padding()
-                
                 NavigationLink("", destination: HomeView(), isActive: $isAuthenticated)
             }
             .padding()
         }
     }
-    
     func authenticateUser() {
         if !isValidEmail(email) {
             errorMessage = "Invalid email. It must contain '@'."
@@ -75,13 +71,11 @@ struct SignUpView: View {
         }
     }
 }
-
 struct SignInView: View {
     @State private var email: String = ""
     @State private var password: String = ""
     @State private var isAuthenticated: Bool = false
     @State private var errorMessage: String = ""
-    
     var body: some View {
         NavigationStack {
             VStack {
@@ -90,21 +84,17 @@ struct SignInView: View {
                     .bold()
                     .foregroundColor(.red)
                     .padding(.bottom, 40)
-                
                 TextField("Email", text: $email)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
                     .padding()
-                
                 SecureField("Password", text: $password)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
                     .padding()
-                
                 if !errorMessage.isEmpty {
                     Text(errorMessage)
                         .foregroundColor(.red)
                         .padding()
                 }
-                
                 Button(action: {
                     authenticateUser()
                 }) {
@@ -116,16 +106,13 @@ struct SignInView: View {
                         .cornerRadius(10)
                         .padding(.horizontal)
                 }
-                
                 NavigationLink("Forgot your password? Reset", destination: ResetPasswordView())
                     .padding()
-                
                 NavigationLink("", destination: HomeView(), isActive: $isAuthenticated)
             }
             .padding()
         }
     }
-    
     func authenticateUser() {
         if isValidEmail(email) && isValidPassword(password) {
             isAuthenticated = true
@@ -134,69 +121,301 @@ struct SignInView: View {
         }
     }
 }
-
 func isValidEmail(_ email: String) -> Bool {
     return email.contains("@")
 }
-
 func isValidPassword(_ password: String) -> Bool {
     return password.count >= 8 && password.rangeOfCharacter(from: .decimalDigits) != nil
 }
-
+// MARK: - Home Tab View
 struct HomeView: View {
     var body: some View {
-        VStack {
-            Text("Welcome to SMARTCHEF")
-                .font(.largeTitle)
-                .bold()
-                .foregroundColor(.red)
-                .padding()
-            
-            Button(action: {
-                // Navigate to add ingredients
-            }) {
-                Text("Add Ingredients")
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.red)
-                    .foregroundColor(.white)
-                    .cornerRadius(10)
-                    .padding(.horizontal)
-            }
-            
-            Button(action: {
-                // Navigate to dietary preferences
-            }) {
-                Text("Select Dietary Preferences")
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.red)
-                    .foregroundColor(.white)
-                    .cornerRadius(10)
-                    .padding(.horizontal)
-            }
-            
-            Button(action: {
-                // Navigate to generated recipes
-            }) {
-                Text("View Recipes")
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.red)
-                    .foregroundColor(.white)
-                    .cornerRadius(10)
-                    .padding(.horizontal)
-            }
+        MainTabView()
+    }
+}
+struct MainTabView: View {
+    var body: some View {
+        TabView {
+            CommunityView()
+                .tabItem {
+                    Image(systemName: "person.3.fill")
+                    Text("Community")
+                }
+            CreateRecipeView()
+                .tabItem {
+                    Image(systemName: "plus.circle")
+                    Text("Create")
+                }
+            ProfileView()
+                .tabItem {
+                    Image(systemName: "person.crop.circle")
+                    Text("Profile")
+                }
         }
-        .padding()
+    }
+}
+// MARK: - Recipe Model & Detail View
+struct Recipe: Identifiable {
+    let id = UUID()
+    let title: String
+    let imageName: String
+    let calories: Int
+    let description: String
+    let ingredients: String
+    let allergies: [String]
+    let measurements: String
+    let steps: [String]
+}
+
+struct RecipeDetailView: View {
+    let recipe: Recipe
+    @State private var showSteps = false
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                Image(recipe.imageName)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(height: 200)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+
+                Text(recipe.title)
+                    .font(.title2)
+                    .bold()
+
+                Text("\(recipe.calories) kcal")
+                    .foregroundColor(.smartChefRed)
+                    .font(.headline)
+
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Details")
+                        .font(.headline)
+                    Text(recipe.description)
+                        .font(.subheadline)
+                        .foregroundColor(.gray)
+
+                    Text("Ingredients")
+                        .font(.headline)
+                    Text(recipe.ingredients)
+                        .font(.subheadline)
+
+                    Text("Measurements")
+                        .font(.headline)
+                    Text(recipe.measurements)
+                        .font(.subheadline)
+
+                    DisclosureGroup("Steps", isExpanded: $showSteps) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            ForEach(recipe.steps.indices, id: \ .self) { index in
+                                Text("\(index + 1). \(recipe.steps[index])")
+                                    .font(.subheadline)
+                            }
+                        }
+                        .padding(.top, 4)
+                    }
+                    .font(.headline)
+
+                    if !recipe.allergies.isEmpty {
+                        Text("Allergies")
+                            .font(.headline)
+                            .foregroundColor(.red)
+                        Text(recipe.allergies.joined(separator: ", "))
+                            .font(.subheadline)
+                            .foregroundColor(.red)
+                    }
+                }
+                .padding(.horizontal)
+
+                Button(action: {}) {
+                    Text("Add to favorites")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.smartChefRed)
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
+                        .padding(.horizontal)
+                }
+                .padding(.bottom)
+            }
+            .padding()
+        }
+        .navigationTitle("")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
+// MARK: - Community View
+struct CommunityView: View {
+    @State private var showAddRecipe = false
+
+    let recipes = [
+        Recipe(title: "Veggie tomato mix", imageName: "veggie_tomato", calories: 320, description: "A mix of vegetables perfect for any evening snack.", ingredients: "Vegetables, tomatoes", allergies: ["Tomatoes"], measurements: "1 cup chopped veggies, 2 tomatoes", steps: ["Wash and chop all vegetables.", "Heat pan and sauté vegetables for 5–7 minutes.", "Add tomatoes and cook for another 3 minutes.", "Serve warm."]),
+        Recipe(title: "Egg and cucumber", imageName: "egg_cucumber", calories: 290, description: "Light and healthy meal with boiled eggs and cucumbers.", ingredients: "Eggs, cucumber", allergies: ["Eggs"], measurements: "2 eggs, 1 cucumber sliced", steps: ["Boil eggs for 10 minutes.", "Peel and slice eggs.", "Serve with sliced cucumber and a pinch of salt."]),
+        Recipe(title: "Fried chicken mix", imageName: "fried_chicken", calories: 450, description: "Crispy fried chicken with a mix of spices.", ingredients: "Chicken, spices", allergies: ["Spices"], measurements: "500g chicken, 1 tsp each of paprika, garlic, salt", steps: ["Season chicken with spices.", "Heat oil in pan.", "Fry chicken until golden and crispy.", "Drain and serve."]),
+        Recipe(title: "Moi-moi and ekpa", imageName: "moi_moi_ekpa", calories: 400, description: "Classic Nigerian dish with beans and oil.", ingredients: "Beans, oil", allergies: ["None"], measurements: "1 cup blended beans, 2 tbsp red palm oil", steps: ["Mix blended beans with oil and seasonings.", "Pour into containers and steam for 45 minutes.", "Serve with plantains or rice."]),
+        Recipe(title: "Grilled veggie wrap", imageName: "veggie_wrap", calories: 270, description: "Grilled wrap with seasonal vegetables.", ingredients: "Tortilla, veggies", allergies: ["Gluten"], measurements: "1 tortilla, 1 cup mixed veggies", steps: ["Grill vegetables until tender.", "Warm tortilla and place veggies inside.", "Wrap tightly and serve."]),
+        Recipe(title: "Avocado toast", imageName: "avocado_toast", calories: 250, description: "Toasted bread topped with mashed avocado.", ingredients: "Bread, avocado", allergies: ["Gluten"], measurements: "2 slices bread, 1 ripe avocado", steps: ["Toast bread slices.", "Mash avocado with lemon and salt.", "Spread on toast and enjoy."])
+    ]
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading) {
+                HStack {
+                    Text("Community")
+                        .font(.largeTitle)
+                        .bold()
+                        .foregroundColor(.smartChefRed)
+
+                    Spacer()
+
+                    Button(action: {
+                        showAddRecipe = true
+                    }) {
+                        Image(systemName: "plus")
+                            .font(.title2)
+                            .padding(8)
+                            .background(Color.smartChefRed)
+                            .foregroundColor(.white)
+                            .clipShape(Circle())
+                    }
+                    .padding(.trailing)
+                }
+                .padding([.top, .leading])
+
+                Text("Total \(recipes.count) results")
+                    .font(.headline)
+                    .padding(.horizontal)
+                    .padding(.bottom, 5)
+
+                ScrollView {
+                    LazyVGrid(columns: [
+                        GridItem(.flexible()),
+                        GridItem(.flexible())
+                    ], spacing: 20) {
+                        ForEach(recipes) { recipe in
+                            NavigationLink(destination: RecipeDetailView(recipe: recipe)) {
+                                VStack(spacing: 10) {
+                                    ZStack {
+                                        RoundedRectangle(cornerRadius: 20)
+                                            .fill(Color.white)
+                                            .shadow(radius: 4)
+
+                                        VStack(spacing: 10) {
+                                            Image(recipe.imageName)
+                                                .resizable()
+                                                .scaledToFit()
+                                                .frame(height: 80)
+                                                .clipShape(RoundedRectangle(cornerRadius: 10))
+
+                                            Text(recipe.title)
+                                                .font(.headline)
+                                                .multilineTextAlignment(.center)
+                                                .foregroundColor(.black)
+
+                                            Text("\(recipe.calories) kcal")
+                                                .font(.subheadline)
+                                                .foregroundColor(.smartChefRed)
+
+                                            if !recipe.allergies.isEmpty {
+                                                Text("Allergies: \(recipe.allergies.joined(separator: ", "))")
+                                                    .font(.caption)
+                                                    .foregroundColor(.red)
+                                            }
+                                        }
+                                        .padding()
+                                    }
+                                    .frame(height: 220)
+                                }
+                            }
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+            }
+            .sheet(isPresented: $showAddRecipe) {
+                Text("Share a new recipe (Coming soon)")
+                    .font(.title)
+                    .padding()
+            }
+        }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+struct CreateRecipeView: View {
+    var body: some View {
+        VStack(spacing: 20) {
+            Text("Create or View Recipes")
+                .font(.title)
+                .bold()
+                .foregroundColor(.smartChefRed)
+                .padding(.top)
+            Button("Create New Recipe") {}
+                .font(.headline)
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(Color.smartChefRed)
+                .foregroundColor(.white)
+                .cornerRadius(12)
+                .padding(.horizontal)
+            Button("View Previous Recipes") {}
+                .font(.headline)
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(Color.smartChefRed)
+                .foregroundColor(.white)
+                .cornerRadius(12)
+                .padding(.horizontal)
+        }
+    }
+}
+struct ProfileView: View {
+    var body: some View {
+        VStack(spacing: 20) {
+            Text("Profile")
+                .font(.title)
+                .bold()
+                .foregroundColor(.smartChefRed)
+                .padding(.top)
+            Button("Settings") {}
+                .font(.headline)
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(Color.smartChefLightGray)
+                .cornerRadius(12)
+                .padding(.horizontal)
+            Button("Dietary Preferences") {}
+                .font(.headline)
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(Color.smartChefLightGray)
+                .cornerRadius(12)
+                .padding(.horizontal)
+            Button("Logout") {}
+                .font(.headline)
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(Color.gray.opacity(0.3))
+                .cornerRadius(12)
+                .padding(.horizontal)
+        }
+    }
+}
+// MARK: - Password Reset & Confirmation
 struct ResetPasswordView: View {
     @State private var email: String = ""
     @State private var isEmailValid: Bool = false
     @State private var errorMessage: String = ""
-    
     var body: some View {
         NavigationStack {
             VStack {
@@ -205,17 +424,14 @@ struct ResetPasswordView: View {
                     .bold()
                     .foregroundColor(.red)
                     .padding(.bottom, 40)
-                
                 TextField("Enter your email", text: $email)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
                     .padding()
-                
                 if !errorMessage.isEmpty {
                     Text(errorMessage)
                         .foregroundColor(.red)
                         .padding()
                 }
-                
                 Button(action: {
                     validateEmail()
                 }) {
@@ -227,13 +443,11 @@ struct ResetPasswordView: View {
                         .cornerRadius(10)
                         .padding(.horizontal)
                 }
-                
                 NavigationLink("", destination: ConfirmationView(), isActive: $isEmailValid)
             }
             .padding()
         }
     }
-    
     func validateEmail() {
         if isValidEmail(email) {
             isEmailValid = true
@@ -242,32 +456,24 @@ struct ResetPasswordView: View {
         }
     }
 }
-
 struct ConfirmationView: View {
     var body: some View {
-        VStack {
-            Text("SMARTCHEF")
-                .font(.largeTitle)
-                .bold()
-                .foregroundColor(.red)
-                .padding()
-            
-            Text("The Email has been sent!")
-                .multilineTextAlignment(.center)
-                .padding()
-            
-            Image(systemName: "checkmark.circle.fill")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 100, height: 100)
-                .foregroundColor(.red)
-                .padding()
-            
-            Button(action: {
-                // Navigate back to login
-            }) {
-               
-                
+        NavigationStack {
+            VStack {
+                Text("SMARTCHEF")
+                    .font(.largeTitle)
+                    .bold()
+                    .foregroundColor(.red)
+                    .padding()
+                Text("The Email has been sent!")
+                    .multilineTextAlignment(.center)
+                    .padding()
+                Image(systemName: "checkmark.circle.fill")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 100, height: 100)
+                    .foregroundColor(.red)
+                    .padding()
                 NavigationLink(destination: SignInView()) {
                     Text("Sign in")
                         .frame(maxWidth: .infinity)
@@ -279,13 +485,17 @@ struct ConfirmationView: View {
                 }
             }
             .padding()
-            
         }
-            }
-        }
-   
-
-
+    }
+}
+// MARK: - Preview
 #Preview {
     ContentView()
 }
+
+
+
+
+
+
+
