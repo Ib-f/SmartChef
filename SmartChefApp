@@ -1,7 +1,11 @@
 import SwiftUI
+import FirebaseCore
 
 @main
-struct SmartChefApp: App {
+struct SmartChef1App: App {
+    init(){
+        FirebaseApp.configure()
+    }
     var body: some Scene {
         WindowGroup {
             ContentView()
