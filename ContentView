@@ -12,7 +12,7 @@ struct ContentView: View {
         }
     }
 }
-// MARK: - Authentication Views
+//Authentication Views
 struct SignUpView: View {
     @State private var email: String = ""
     @State private var password: String = ""
@@ -127,7 +127,7 @@ func isValidEmail(_ email: String) -> Bool {
 func isValidPassword(_ password: String) -> Bool {
     return password.count >= 8 && password.rangeOfCharacter(from: .decimalDigits) != nil
 }
-// MARK: - Home Tab View
+// Home Tab View
 struct HomeView: View {
     var body: some View {
         MainTabView()
@@ -154,7 +154,7 @@ struct MainTabView: View {
         }
     }
 }
-// MARK: - Recipe Model & Detail View
+// Recipe Model & Detail View
 struct Recipe: Identifiable {
     let id = UUID()
     let title: String
@@ -246,7 +246,7 @@ struct RecipeDetailView: View {
     }
 }
 
-// MARK: - Community View
+// Community View
 struct CommunityView: View {
     @State private var showAddRecipe = false
 
@@ -411,7 +411,7 @@ struct ProfileView: View {
         }
     }
 }
-// MARK: - Password Reset & Confirmation
+// Password Reset & Confirmation
 struct ResetPasswordView: View {
     @State private var email: String = ""
     @State private var isEmailValid: Bool = false
@@ -488,7 +488,7 @@ struct ConfirmationView: View {
         }
     }
 }
-// MARK: - Preview
+// Preview
 #Preview {
     ContentView()
 }
