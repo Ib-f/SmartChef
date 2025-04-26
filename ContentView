@@ -12,13 +12,15 @@ struct ContentView: View {
         }
     }
 }
-//Authentication Views
+// MARK: - Authentication Views
 struct SignUpView: View {
     @State private var email: String = ""
     @State private var password: String = ""
     @State private var confirmPassword: String = ""
     @State private var isAuthenticated: Bool = false
     @State private var errorMessage: String = ""
+    @State private var amountError: String = ""
+
     var body: some View {
         NavigationStack {
             VStack {
@@ -127,7 +129,7 @@ func isValidEmail(_ email: String) -> Bool {
 func isValidPassword(_ password: String) -> Bool {
     return password.count >= 8 && password.rangeOfCharacter(from: .decimalDigits) != nil
 }
-// Home Tab View
+// MARK: - Home Tab View
 struct HomeView: View {
     var body: some View {
         MainTabView()
@@ -141,7 +143,7 @@ struct MainTabView: View {
                     Image(systemName: "person.3.fill")
                     Text("Community")
                 }
-            CreateRecipeView()
+            ChatGPTPromptView()
                 .tabItem {
                     Image(systemName: "plus.circle")
                     Text("Create")
@@ -154,7 +156,7 @@ struct MainTabView: View {
         }
     }
 }
-// Recipe Model & Detail View
+// MARK: - Recipe Model & Detail View
 struct Recipe: Identifiable {
     let id = UUID()
     let title: String
@@ -246,7 +248,7 @@ struct RecipeDetailView: View {
     }
 }
 
-// Community View
+// MARK: - Community View
 struct CommunityView: View {
     @State private var showAddRecipe = false
 
@@ -345,14 +347,9 @@ struct CommunityView: View {
 
 
 
-
-
-
-
-
-
-
 struct CreateRecipeView: View {
+    @State private var navigateToPrompt = false
+
     var body: some View {
         VStack(spacing: 20) {
             Text("Create or View Recipes")
@@ -360,142 +357,543 @@ struct CreateRecipeView: View {
                 .bold()
                 .foregroundColor(.smartChefRed)
                 .padding(.top)
-            Button("Create New Recipe") {}
-                .font(.headline)
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color.smartChefRed)
-                .foregroundColor(.white)
-                .cornerRadius(12)
-                .padding(.horizontal)
-            Button("View Previous Recipes") {}
-                .font(.headline)
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color.smartChefRed)
-                .foregroundColor(.white)
-                .cornerRadius(12)
-                .padding(.horizontal)
+
+            Button(action: {
+                navigateToPrompt = true
+            }) {
+                Text("Create New Recipe")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.smartChefRed)
+                    .foregroundColor(.white)
+                    .cornerRadius(12)
+                    .padding(.horizontal)
+            }
+
+            Button("View Previous Recipes") {
+                // TODO: Navigate to previous recipes view
+            }
+            .font(.headline)
+            .frame(maxWidth: .infinity)
+            .padding()
+            .background(Color.smartChefRed)
+            .foregroundColor(.white)
+            .cornerRadius(12)
+            .padding(.horizontal)
+
+            Spacer()
+        }
+        .navigationDestination(isPresented: $navigateToPrompt) {
+            ChatGPTPromptView()
         }
     }
 }
-struct ProfileView: View {
+
+struct ChatGPTPromptView: View {
+    
+    @State private var ingredients: [IngredientEntry] = [IngredientEntry()]
+    @State private var generatedRecipe: String = ""
+    @State private var isLoading = false
+    @State private var dietType: String = "Any"
+    @State private var previousRecipes: [String] = []
+    
+    let dietOptions = ["Any", "Low Carbs", "High Carbs", "High Protein", "Low Calories", "High Calories"]
+    let units = ["g", "ml", "oz", "Pc"]
+
     var body: some View {
-        VStack(spacing: 20) {
-            Text("Profile")
-                .font(.title)
-                .bold()
-                .foregroundColor(.smartChefRed)
-                .padding(.top)
-            Button("Settings") {}
-                .font(.headline)
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color.smartChefLightGray)
-                .cornerRadius(12)
-                .padding(.horizontal)
-            Button("Dietary Preferences") {}
-                .font(.headline)
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color.smartChefLightGray)
-                .cornerRadius(12)
-                .padding(.horizontal)
-            Button("Logout") {}
-                .font(.headline)
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color.gray.opacity(0.3))
-                .cornerRadius(12)
-                .padding(.horizontal)
-        }
-    }
-}
-// Password Reset & Confirmation
-struct ResetPasswordView: View {
-    @State private var email: String = ""
-    @State private var isEmailValid: Bool = false
-    @State private var errorMessage: String = ""
-    var body: some View {
+        
         NavigationStack {
-            VStack {
-                Text("SMARTCHEF")
+            ScrollView {
+                VStack(spacing: 20) {
+                    Text("Create or View Recipes")
+                        .font(.title)
+                        .bold()
+                        .foregroundColor(.smartChefRed)
+                        .padding(.top)
+                    HStack {
+                        Text("Ingredients")
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Text("Amount")
+                            .frame(width: 70)
+                        Text("Unit")
+                            .frame(width: 60)
+                    }
+                    .font(.headline)
+                    .padding(.horizontal)
+
+                   
+                    ForEach(ingredients.indices, id: \.self) { index in
+                        HStack(spacing: 10) {
+                            TextField("Ingredient", text: $ingredients[index].name)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                                .autocapitalization(.words)
+                                .onChange(of: ingredients[index].name) { newValue in
+                                    ingredients[index].name = newValue.filter { $0.isLetter || $0.isWhitespace }
+                                    
+                                    if !newValue.isEmpty && index == ingredients.count - 1 {
+                                        // 🛠 Immediately add new row
+                                        ingredients.append(IngredientEntry())
+                                    }
+                                }
+                                .onSubmit {
+                                    DispatchQueue.main.async {
+                                        cleanEmptyRows()
+                                    }
+                                }
+
+                            
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                TextField("Amount", text: $ingredients[index].amount)
+                                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                                    .padding()
+                                    .keyboardType(.numberPad)
+                                    .frame(width: 60)
+                                    .onChange(of: ingredients[index].amount) { newValue in
+                                        ingredients[index].amount = newValue.filter { $0.isNumber }
+                                        if ingredients[index].amount.count > 4 {
+                                            ingredients[index].amount = String(ingredients[index].amount.prefix(4))
+                                        }
+                                        // Validate amount immediately
+                                        if ingredients[index].amount.isEmpty || ingredients[index].amount == "0" {
+                                            ingredients[index].amountError = " Enter a valid amount❗"
+                                        } else {
+                                            ingredients[index].amountError = ""
+                                        }
+                                    }
+                                
+                                if !ingredients[index].amountError.isEmpty {
+                                    Text(ingredients[index].amountError)
+                                        .font(.caption)
+                                        .foregroundColor(.red)
+                                }
+                            }
+
+
+                                
+                            Menu {
+                                ForEach(units, id: \.self) { unit in
+                                    Button(unit) {
+                                        ingredients[index].unit = unit
+                                    }
+                                }
+                            } label: {
+                                HStack {
+                                    Text(ingredients[index].unit.isEmpty ? "Unit" : ingredients[index].unit)
+                                    Image(systemName: "chevron.down")
+                                }
+                                .frame(width: 60)
+                                .padding(8)
+                                .background(Color.smartChefLightGray)
+                                .cornerRadius(8)
+                            }
+                        }
+                        .padding(.horizontal)
+                    }
+
+
+
+
+                    // Diet Type Selection
+                    Menu {
+                        ForEach(dietOptions, id: \.self) { option in
+                            Button(option) {
+                                dietType = option
+                            }
+                        }
+                    } label: {
+                        HStack {
+                            Text("Diet: \(dietType)")
+                            Image(systemName: "chevron.down")
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.smartChefLightGray)
+                        .cornerRadius(12)
+                        .padding(.horizontal)
+                    }
+
+                    // Generate Button
+                    Button(action: {
+                        generateRecipe()
+                    }) {
+                        HStack {
+                            if isLoading {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            } else {
+                                Text("Generate Recipe!")
+                                    .font(.headline)
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(isLoading ? Color.gray : Color.smartChefRed)
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
+                        .padding(.horizontal)
+                    }
+                    .disabled(isLoading || ingredients.filter { !$0.name.isEmpty }.isEmpty)
+
+                    // Generated Recipe Display
+                    if !generatedRecipe.isEmpty {
+                        ScrollView {
+                            Text(generatedRecipe)
+                                .padding()
+                                .background(Color.smartChefLightGray)
+                                .cornerRadius(12)
+                                .padding()
+                        }
+                    }
+
+                    // View Previous Recipes
+                    NavigationLink(destination: ViewPreviousRecipes(recipes: previousRecipes)) {
+                        Text("View Previous Recipes")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.smartChefRed)
+                            .foregroundColor(.white)
+                            .cornerRadius(12)
+                            .padding(.horizontal)
+                    }
+                }
+                .padding(.top)
+            }
+            .background(Color.white)
+            .ignoresSafeArea(.keyboard, edges: .bottom)
+        }
+    }
+
+    // MARK: - Helper Functions
+
+    func cleanEmptyRows() {
+        ingredients = ingredients.enumerated().filter { index, ingredient in
+            index == 0 || !ingredient.name.isEmpty
+        }.map { $0.element }
+    }
+
+    func generateRecipe() {
+        isLoading = true
+
+        let filledIngredients = ingredients.filter { !$0.name.isEmpty }
+
+        let formattedIngredients = filledIngredients
+            .map { "\($0.amount) \($0.unit) \($0.name)" }
+            .joined(separator: ", ")
+
+        let prompt = """
+        Validate if the following are real ingredients: \(formattedIngredients).
+        Then create a \(dietType) recipe using these ingredients.
+        Provide detailed cooking instructions and include macros (Calories, Proteins, Carbs, Fats). Mention that the macros are approximate.
+        """
+
+        ChatGPTService.shared.generateRecipe(prompt: prompt) { response in
+            DispatchQueue.main.async {
+                if let recipe = response {
+                    self.generatedRecipe = recipe
+                    self.previousRecipes.append(recipe)
+                } else {
+                    self.generatedRecipe = "Failed to generate recipe."
+                }
+                self.isLoading = false
+            }
+        }
+    }
+}
+
+// Support structs
+
+struct IngredientEntry: Identifiable, Equatable {
+    var id = UUID()
+    var name: String = ""
+    var amount: String = ""
+    var unit: String = ""
+    var amountError: String = ""
+
+}
+
+struct ViewPreviousRecipes: View {
+    let recipes: [String]
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                Text("Previous Recipes")
                     .font(.largeTitle)
                     .bold()
-                    .foregroundColor(.red)
-                    .padding(.bottom, 40)
-                TextField("Enter your email", text: $email)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .foregroundColor(.smartChefRed)
                     .padding()
-                if !errorMessage.isEmpty {
-                    Text(errorMessage)
+
+                if recipes.isEmpty {
+                    Text("No previous recipes yet.")
+                        .foregroundColor(.gray)
+                        .padding()
+                } else {
+                    ForEach(recipes, id: \.self) { recipe in
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text(recipe)
+                                .padding()
+                                .background(Color.smartChefLightGray)
+                                .cornerRadius(12)
+                        }
+                        .padding(.horizontal)
+                    }
+                }
+            }
+            .padding(.top)
+        }
+    }
+}
+
+
+    
+    
+
+    ;struct ProfileView: View {
+        @State private var navigateTo: String? = nil
+        @Environment(\.presentationMode) var presentationMode
+        
+        var body: some View {
+            NavigationStack {
+                VStack(spacing: 20) {
+                    
+                    // Profile Header
+                    VStack(spacing: 8) {
+                        Spacer().frame(height:50)
+                        Image(systemName: "person.crop.circle")
+                            .resizable()
+                            .frame(width: 80, height: 80)
+                            .foregroundColor(.smartChefRed)
+                        
+                        Text("JOHN DOE")
+                            .font(.title2)
+                            .bold()
+                            .foregroundColor(.black)
+                    }
+                    .padding(.top, 20)
+                    
+                    // Options List
+                    VStack(spacing: 16) {
+                        Button(action: { navigateTo = "EditProfile" }) {
+                            ProfileRow(icon: "person", title: "Edit Profile")
+                        }
+                        Button(action: { navigateTo = "Favorites" }) {
+                            ProfileRow(icon: "clock", title: "Favorites")
+                        }
+                        Button(action: { navigateTo = "MyPosts" }) {
+                            ProfileRow(icon: "doc.text", title: "My Posts")
+                        }
+                        
+                        Divider().padding(.vertical, 8)
+                        
+                        Button(action: { navigateTo = "Help" }) {
+                            ProfileRow(icon: "questionmark.circle", title: "Help")
+                        }
+                        Button(action: { navigateTo = "Settings" }) {
+                            ProfileRow(icon: "gearshape", title: "Settings")
+                        }
+                        Button(action: { navigateTo = "Terms" }) {
+                            ProfileRow(icon: "doc.plaintext", title: "Terms and Conditions")
+                        }
+                        
+                        Divider().padding(.vertical, 8)
+                        
+                        Button(action: {
+                            // Perform logout here
+                            navigateTo = "Logout"
+                        }) {
+                            HStack {
+                                Image(systemName: "arrowshape.turn.up.left")
+                                    .foregroundColor(.smartChefRed)
+                                Text("Log Out")
+                                    .foregroundColor(.smartChefRed)
+                                    .fontWeight(.bold)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding()
+                            .background(Color.smartChefLightGray)
+                            .cornerRadius(12)
+                            .padding(.horizontal)
+                        }
+                    }
+                    Spacer()
+                    
+                    NavigationLink(destination: EditProfileView(), tag: "EditProfile", selection: $navigateTo) { EmptyView() }
+                    NavigationLink(destination: FavoritesView(), tag: "Favorites", selection: $navigateTo) { EmptyView() }
+                    NavigationLink(destination: MyPostsView(), tag: "MyPosts", selection: $navigateTo) { EmptyView() }
+                    NavigationLink(destination: HelpView(), tag: "Help", selection: $navigateTo) { EmptyView() }
+                    NavigationLink(destination: SettingsView(), tag: "Settings", selection: $navigateTo) { EmptyView() }
+                    NavigationLink(destination: TermsAndConditionsView(), tag: "Terms", selection: $navigateTo) { EmptyView() }
+                    NavigationLink(destination: SignInView(), tag: "Logout", selection: $navigateTo) { EmptyView() }
+                }
+                .navigationTitle("Profile")
+                .navigationBarTitleDisplayMode(.inline)
+                .background(Color.white.edgesIgnoringSafeArea(.all))
+            }
+        }
+    }
+    
+    struct ProfileRow: View {
+        var icon: String
+        var title: String
+        
+        var body: some View {
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .foregroundColor(.smartChefRed)
+                    .frame(width: 24, height: 24)
+                Text(title)
+                    .foregroundColor(.black)
+                Spacer()
+            }
+            .padding()
+            .background(Color.smartChefLightGray)
+            .cornerRadius(12)
+            .padding(.horizontal)
+        }
+    }
+    
+    // MARK: - Placeholder Views
+    struct EditProfileView: View {
+        var body: some View {
+            Text("Edit Profile Screen")
+                .font(.largeTitle)
+                .padding()
+        }
+    }
+    
+    struct FavoritesView: View {
+        var body: some View {
+            Text("Favorites Screen")
+                .font(.largeTitle)
+                .padding()
+        }
+    }
+    
+    struct MyPostsView: View {
+        var body: some View {
+            Text("My Posts Screen")
+                .font(.largeTitle)
+                .padding()
+        }
+    }
+    
+    struct HelpView: View {
+        var body: some View {
+            Text("Help Screen")
+                .font(.largeTitle)
+                .padding()
+        }
+    }
+    
+    struct SettingsView: View {
+        var body: some View {
+            Text("Settings Screen")
+                .font(.largeTitle)
+                .padding()
+        }
+    }
+    
+    struct TermsAndConditionsView: View {
+        var body: some View {
+            Text("Terms and Conditions Screen")
+                .font(.largeTitle)
+                .padding()
+        }
+    }
+    
+    
+    
+    
+    
+    // MARK: - Password Reset & Confirmation
+    struct ResetPasswordView: View {
+        @State private var email: String = ""
+        @State private var isEmailValid: Bool = false
+        @State private var errorMessage: String = ""
+        var body: some View {
+            NavigationStack {
+                VStack {
+                    Text("SMARTCHEF")
+                        .font(.largeTitle)
+                        .bold()
+                        .foregroundColor(.red)
+                        .padding(.bottom, 40)
+                    TextField("Enter your email", text: $email)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .padding()
+                    if !errorMessage.isEmpty {
+                        Text(errorMessage)
+                            .foregroundColor(.red)
+                            .padding()
+                    }
+                    Button(action: {
+                        validateEmail()
+                    }) {
+                        Text("Send Reset Email")
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.red)
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
+                            .padding(.horizontal)
+                    }
+                    NavigationLink("", destination: ConfirmationView(), isActive: $isEmailValid)
+                }
+                .padding()
+            }
+        }
+        func validateEmail() {
+            if isValidEmail(email) {
+                isEmailValid = true
+            } else {
+                errorMessage = "Invalid email format. Please enter a valid email."
+            }
+        }
+    }
+    struct ConfirmationView: View {
+        var body: some View {
+            NavigationStack {
+                VStack {
+                    Text("SMARTCHEF")
+                        .font(.largeTitle)
+                        .bold()
                         .foregroundColor(.red)
                         .padding()
-                }
-                Button(action: {
-                    validateEmail()
-                }) {
-                    Text("Send Reset Email")
-                        .frame(maxWidth: .infinity)
+                    Text("The Email has been sent!")
+                        .multilineTextAlignment(.center)
                         .padding()
-                        .background(Color.red)
-                        .foregroundColor(.white)
-                        .cornerRadius(10)
-                        .padding(.horizontal)
-                }
-                NavigationLink("", destination: ConfirmationView(), isActive: $isEmailValid)
-            }
-            .padding()
-        }
-    }
-    func validateEmail() {
-        if isValidEmail(email) {
-            isEmailValid = true
-        } else {
-            errorMessage = "Invalid email format. Please enter a valid email."
-        }
-    }
-}
-struct ConfirmationView: View {
-    var body: some View {
-        NavigationStack {
-            VStack {
-                Text("SMARTCHEF")
-                    .font(.largeTitle)
-                    .bold()
-                    .foregroundColor(.red)
-                    .padding()
-                Text("The Email has been sent!")
-                    .multilineTextAlignment(.center)
-                    .padding()
-                Image(systemName: "checkmark.circle.fill")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 100, height: 100)
-                    .foregroundColor(.red)
-                    .padding()
-                NavigationLink(destination: SignInView()) {
-                    Text("Sign in")
-                        .frame(maxWidth: .infinity)
+                    Image(systemName: "checkmark.circle.fill")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 100, height: 100)
+                        .foregroundColor(.red)
                         .padding()
-                        .background(Color.red)
-                        .foregroundColor(.white)
-                        .cornerRadius(10)
-                        .padding(.horizontal)
+                    NavigationLink(destination: SignInView()) {
+                        Text("Sign in")
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.red)
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
+                            .padding(.horizontal)
+                    }
                 }
+                .padding()
             }
-            .padding()
         }
     }
-}
-// Preview
-#Preview {
-    ContentView()
-}
-
-
-
-
-
-
+    // MARK: - Preview
+    #Preview {
+        ContentView()
+    }
+    
+    
+    
+    
+    
+    
+    
 
