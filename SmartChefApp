@@ -1,5 +1,6 @@
 import SwiftUI
-import FirebaseCore
+import Firebase
+
 
 @main
 struct SmartChef1App: App {
