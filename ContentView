@@ -77,7 +77,7 @@ struct SignUpView: View {
     
     
     func authenticateUser() {
-        // Local validation
+        
         guard fname.count >= 3 else {
             errorMessage = "First name must be at least 3 letters."
             return
@@ -91,7 +91,7 @@ struct SignUpView: View {
             return
         }
         guard isValidEmail(email) else {
-            errorMessage = "Email must be from gmail, outlook, hotmail, icloud, or yahoo."
+            errorMessage = "Email must be from psu, gmail, outlook, hotmail, icloud, or yahoo."
             return
         }
         guard isValidPassword(password) else {
@@ -102,13 +102,10 @@ struct SignUpView: View {
             errorMessage = "Passwords do not match."
             return
         }
-        // Firebase Authentication
         
         Auth.auth().createUser(withEmail: email, password: password) { result, error in
             if let error = error as NSError? {
-                // ... handle errors (as in previous step)
             } else if let user = result?.user {
-                // Save user info in Realtime Database
                 let ref = Database.database().reference()
                 let userData = [
                     "firstName": fname,
@@ -129,52 +126,6 @@ struct SignUpView: View {
         }
     }
 }
-/*
-    func authenticateUser() {
-        if fname.count < 3 {
-            errorMessage = "First name must be at least 3 letters."
-        } else if lname.count < 4 {
-            errorMessage = "Last name must be at least 4 letters."
-        } else if !isValidUsername(username) {
-            errorMessage = "Invalid Username"
-        } else if !isValidEmail(email) {
-            errorMessage = "Invalid Email!"
-        } else if !isValidPassword(password) {
-            errorMessage = "Password must be at least 8 characters and contain a number."
-        } else if password != confirmPassword {
-            errorMessage = "Passwords do not match."
-        } else if
-            isAuthenticated == true{
-        }
-        
-        else if !isValidEmail(email) {
-            errorMessage = "Invalid email. It must contain '@'."
-        } else if !isValidPassword(password) {
-            errorMessage = "Password must be at least 8 characters and contain a number."
-        } else if password != confirmPassword {
-            errorMessage = "Passwords do not match."
-        } else {
-            
-            let ref = Database.database().reference()
-            let userData = [
-                "firstName": fname,
-                "lastName": lname,
-                "username": username,
-                "email": email
-            ]
-            ref.child("users").childByAutoId().setValue(userData) { error, _ in
-                if let error = error {
-                    self.errorMessage = "Firebase Error: \(error.localizedDescription)"
-                } else {
-                    self.isAuthenticated = true
-                }
-            }
-        }
-    }
-}*/
-    
-
-
 struct SignInView: View {
     @State private var email: String = ""
     @State private var password: String = ""
@@ -241,9 +192,6 @@ struct SignInView: View {
         }
     }
 }
-
-   
-    
     // MARK: - Home Tab View
     struct HomeView: View {
         var body: some View {
@@ -271,197 +219,397 @@ struct SignInView: View {
             }
         }
     }
-    // MARK: - Recipe Model & Detail View
-    struct Recipe: Identifiable {
-        let id = UUID()
-        let title: String
-        let imageName: String
-        let calories: Int
-        let description: String
-        let ingredients: String
-        let allergies: [String]
-        let measurements: String
-        let steps: [String]
-    }
-    
-    struct RecipeDetailView: View {
-        let recipe: Recipe
-        @State private var showSteps = false
-        
-        var body: some View {
-            ScrollView {
-                VStack(spacing: 20) {
-                    Image(recipe.imageName)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(height: 200)
-                        .clipShape(RoundedRectangle(cornerRadius: 16))
-                    
-                    Text(recipe.title)
-                        .font(.title2)
-                        .bold()
-                    
-                    Text("\(recipe.calories) kcal")
-                        .foregroundColor(.smartChefRed)
-                        .font(.headline)
-                    
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("Details")
-                            .font(.headline)
-                        Text(recipe.description)
-                            .font(.subheadline)
-                            .foregroundColor(.gray)
-                        
-                        Text("Ingredients")
-                            .font(.headline)
-                        Text(recipe.ingredients)
-                            .font(.subheadline)
-                        
-                        Text("Measurements")
-                            .font(.headline)
-                        Text(recipe.measurements)
-                            .font(.subheadline)
-                        
-                        DisclosureGroup("Steps", isExpanded: $showSteps) {
-                            VStack(alignment: .leading, spacing: 8) {
-                                ForEach(recipe.steps.indices, id: \ .self) { index in
-                                    Text("\(index + 1). \(recipe.steps[index])")
-                                        .font(.subheadline)
-                                }
-                            }
-                            .padding(.top, 4)
-                        }
-                        .font(.headline)
-                        
-                        if !recipe.allergies.isEmpty {
-                            Text("Allergies")
-                                .font(.headline)
-                                .foregroundColor(.red)
-                            Text(recipe.allergies.joined(separator: ", "))
-                                .font(.subheadline)
-                                .foregroundColor(.red)
+// MARK: - Recipe Model
+
+struct Recipe: Identifiable {
+    let id = UUID()
+    let title: String
+    let imageName: String?
+    let calories: Int
+    let description: String
+    let ingredients: String
+    let allergies: [String]
+    let measurements: String
+    let steps: [String]
+    let macros: String
+}
+
+struct RecipeDetailView: View {
+    let recipe: Recipe
+    @State private var showSteps = false
+    @State private var successMessage = ""
+    @State private var errorMessage = ""
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                if let imageURL = recipe.imageName, let url = URL(string: imageURL) {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .empty:
+                            ProgressView().frame(height: 200)
+                        case .success(let image):
+                            image.resizable()
+                                 .scaledToFit()
+                                 .frame(height: 200)
+                                 .clipShape(RoundedRectangle(cornerRadius: 16))
+                        case .failure:
+                            Image(systemName: "photo")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(height: 200)
+                                .foregroundColor(.gray)
+                        @unknown default:
+                            EmptyView()
                         }
                     }
-                    .padding(.horizontal)
-                    
-                    Button(action: {}) {
-                        Text("Add to favorites")
+                }
+
+                Text(recipe.title)
+                    .font(.title2)
+                    .bold()
+
+                Text("\(recipe.calories) kcal")
+                    .foregroundColor(.smartChefRed)
+                    .font(.headline)
+
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Measurements").font(.headline)
+                    Text(recipe.measurements).font(.subheadline)
+
+                    Text("Steps").font(.headline)
+                    DisclosureGroup("Show Instructions", isExpanded: $showSteps) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            ForEach(recipe.steps.indices, id: \.self) { index in
+                                Text("\(recipe.steps[index])")
+                                    .font(.subheadline)
+                            }
+                        }.padding(.top, 4)
+                    }
+
+                    Text("Macros").font(.headline)
+                    Text(recipe.macros).font(.subheadline)
+
+                    if !recipe.allergies.isEmpty {
+                        Text("Allergies")
                             .font(.headline)
-                            .frame(maxWidth: .infinity)
-                            .padding()
+                            .foregroundColor(.red)
+                        Text(recipe.allergies.joined(separator: ", "))
+                            .font(.subheadline)
+                            .foregroundColor(.red)
+                    }
+                }
+                .padding(.horizontal)
+
+                if !successMessage.isEmpty {
+                    Text(successMessage)
+                        .foregroundColor(.green)
+                        .padding(.horizontal)
+                }
+
+                if !errorMessage.isEmpty {
+                    Text(errorMessage)
+                        .foregroundColor(.red)
+                        .padding(.horizontal)
+                }
+
+                Button(action: {
+                    saveToFavorites(recipe)
+                }) {
+                    Text("Add to favorites")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.smartChefRed)
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
+                        .padding(.horizontal)
+                }
+                .padding(.bottom)
+            }
+            .padding()
+        }
+        .navigationTitle("")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    func saveToFavorites(_ recipe: Recipe) {
+        guard let uid = Auth.auth().currentUser?.uid else {
+            errorMessage = "You must be logged in to save favorites."
+            return
+        }
+
+        let ref = Database.database().reference()
+            .child("users")
+            .child(uid)
+            .child("favorites")
+            .childByAutoId()
+
+        let data: [String: Any] = [
+            "title": recipe.title,
+            "imageName": recipe.imageName ?? "",
+            "calories": recipe.calories,
+            "description": recipe.description,
+            "ingredients": recipe.ingredients,
+            "allergies": recipe.allergies,
+            "measurements": recipe.measurements,
+            "steps": recipe.steps,
+            "macros": recipe.macros,
+            "timestamp": Date().timeIntervalSince1970
+        ]
+
+        ref.setValue(data) { error, _ in
+            if let error = error {
+                errorMessage = "❌ Failed: \(error.localizedDescription)"
+                successMessage = ""
+            } else {
+                successMessage = "✅ Recipe added to favorites."
+                errorMessage = ""
+            }
+        }
+    }
+}
+
+
+
+// MARK: - Community View
+
+struct CommunityView: View {
+    @State private var showAddRecipe = false
+    @State private var communityRecipes: [Recipe] = []
+    @State private var isLoading = true
+    @State private var errorMessage = ""
+    
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading) {
+                HStack {
+                    Text("Community")
+                        .font(.largeTitle)
+                        .bold()
+                        .foregroundColor(.smartChefRed)
+                    
+                    Spacer()
+                    
+                    Button(action: {
+                        showAddRecipe = true
+                    }) {
+                        Image(systemName: "plus")
+                            .font(.title2)
+                            .padding(8)
                             .background(Color.smartChefRed)
                             .foregroundColor(.white)
-                            .cornerRadius(12)
-                            .padding(.horizontal)
+                            .clipShape(Circle())
                     }
-                    .padding(.bottom)
+                    .padding(.trailing)
+                    .sheet(isPresented: $showAddRecipe) {
+                        ShareRecipeFromPreviousView()
+                    }
+                }
+                .padding([.top, .leading])
+                
+                Text("Total \(communityRecipes.count) results")
+                    .font(.headline)
+                    .padding(.horizontal)
+                    .padding(.bottom, 5)
+                
+                if isLoading {
+                    ProgressView("Loading...").padding()
+                } else if !errorMessage.isEmpty {
+                    Text(errorMessage).foregroundColor(.red).padding()
+                } else {
+                    CommunityGrid(recipes: communityRecipes)
+                }
+            }
+            .onAppear {
+                loadCommunityRecipes()
+            }
+        }
+    }
+    func loadCommunityRecipes() {
+        isLoading = true
+        let ref = Database.database().reference().child("community_recipes")
+        ref.observeSingleEvent(of: .value) { snapshot in
+            var loadedRecipes: [Recipe] = []
+            for child in snapshot.children {
+                if let childSnap = child as? DataSnapshot,
+                   let data = childSnap.value as? [String: Any],
+                   let recipeText = data["recipe"] as? String {
+                    let recipe = parseFullRecipeText(recipeText)
+                    loadedRecipes.append(recipe)
+                }
+            }
+            self.communityRecipes = loadedRecipes.reversed()
+            self.isLoading = false
+        } withCancel: { error in
+            self.errorMessage = "Failed to load community posts: \(error.localizedDescription)"
+            self.isLoading = false
+        }
+    }
+    ;func parseFullRecipeText(_ text: String) -> Recipe {
+        let lines = text.components(separatedBy: .newlines)
+        
+        var title = "Community Recipe"
+        var description = ""
+        var steps: [String] = []
+        var macros = ""
+        var allergies: [String] = []
+        var ingredients = ""
+        var calories = 0
+        var isInIngredients = false
+        var isInInstructions = false
+        var isInMacros = false
+
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.lowercased().starts(with: "recipe:") {
+                title = trimmed.replacingOccurrences(of: "Recipe:", with: "").trimmingCharacters(in: .whitespaces)
+                continue
+            }
+
+            if trimmed.lowercased().starts(with: "ingredients:") {
+                isInIngredients = true
+                isInInstructions = false
+                isInMacros = false
+                continue
+            }
+            if trimmed.lowercased().starts(with: "instructions:") {
+                isInIngredients = false
+                isInInstructions = true
+                isInMacros = false
+                continue
+            }
+            if trimmed.range(of: #"(?i)macros"#, options: .regularExpression) != nil {
+                isInIngredients = false
+                isInInstructions = false
+                isInMacros = true
+                continue
+            }
+            if isInMacros && trimmed.isEmpty {
+                isInMacros = false
+                continue
+            }
+            if trimmed.lowercased().starts(with: "allergies:") {
+                allergies = trimmed.replacingOccurrences(of: "Allergies:", with: "")
+                    .components(separatedBy: ",")
+                    .map { $0.trimmingCharacters(in: .whitespaces) }
+                continue
+            }
+            if let calMatch = trimmed.range(of: #"(?i)calories:\s*(\d+)"#, options: .regularExpression) {
+                let calLine = String(trimmed[calMatch])
+                if let value = calLine.components(separatedBy: ":").last?.trimmingCharacters(in: .whitespaces),
+                   let calInt = Int(value) {
+                    calories = calInt
+                }
+            }
+            if isInIngredients {
+                ingredients += trimmed + "\n"
+            } else if isInInstructions {
+                if trimmed.range(of: #"^\d+\."#, options: .regularExpression) != nil {
+                    steps.append(trimmed)
+                }
+            } else if isInMacros {
+                macros += trimmed + "\n"
+            } else {
+                description += trimmed + "\n"
+            }
+        }
+
+        return Recipe(
+            title: title,
+            imageName: nil,
+            calories: calories,
+            description: description.trimmingCharacters(in: .whitespacesAndNewlines),
+            ingredients: ingredients.trimmingCharacters(in: .whitespacesAndNewlines),
+            allergies: allergies,
+            measurements: ingredients.trimmingCharacters(in: .whitespacesAndNewlines),
+            steps: steps,
+            macros: macros.trimmingCharacters(in: .whitespacesAndNewlines)
+        )
+    }
+}
+
+// MARK: - Recipe Grid & Cards
+
+struct CommunityGrid: View {
+    let recipes: [Recipe]
+
+    var body: some View {
+        ScrollView {
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 20) {
+                ForEach(recipes) { recipe in
+                    NavigationLink(destination: RecipeDetailView(recipe: recipe)) {
+                        RecipeCardView(recipe: recipe)
+                    }
+                }
+            }
+            .padding(.horizontal)
+        }
+    }
+}
+
+struct RecipeCardView: View {
+    let recipe: Recipe
+
+    var body: some View {
+        VStack(spacing: 10) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(Color.white)
+                    .shadow(radius: 4)
+
+                VStack(spacing: 10) {
+                    if let imageURL = recipe.imageName, let url = URL(string: imageURL) {
+                        AsyncImage(url: url) { phase in
+                            switch phase {
+                            case .empty:
+                                ProgressView().frame(height: 80)
+                            case .success(let image):
+                                image
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(height: 80)
+                                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                            case .failure:
+                                Image(systemName: "photo")
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(height: 80)
+                                    .foregroundColor(.gray)
+                            @unknown default:
+                                EmptyView()
+                            }
+                        }
+                    } else {
+                        Image(systemName: "photo")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(height: 80)
+                            .foregroundColor(.gray)
+                    }
+
+                    Text(recipe.title)
+                        .font(.headline)
+                        .multilineTextAlignment(.center)
+                        .foregroundColor(.black)
+
+                    Text("\(recipe.calories) kcal")
+                        .font(.subheadline)
+                        .foregroundColor(.smartChefRed)
+
+                    if !recipe.allergies.isEmpty {
+                        Text("Allergies: \(recipe.allergies.joined(separator: ", "))")
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    }
                 }
                 .padding()
             }
-            .navigationTitle("")
-            .navigationBarTitleDisplayMode(.inline)
+            .frame(height: 220)
         }
     }
-    
-    // MARK: - Community View
-    struct CommunityView: View {
-        @State private var showAddRecipe = false
-        
-        let recipes = [
-            Recipe(title: "Veggie tomato mix", imageName: "veggie_tomato", calories: 320, description: "A mix of vegetables perfect for any evening snack.", ingredients: "Vegetables, tomatoes", allergies: ["Tomatoes"], measurements: "1 cup chopped veggies, 2 tomatoes", steps: ["Wash and chop all vegetables.", "Heat pan and sauté vegetables for 5–7 minutes.", "Add tomatoes and cook for another 3 minutes.", "Serve warm."]),
-            Recipe(title: "Egg and cucumber", imageName: "egg_cucumber", calories: 290, description: "Light and healthy meal with boiled eggs and cucumbers.", ingredients: "Eggs, cucumber", allergies: ["Eggs"], measurements: "2 eggs, 1 cucumber sliced", steps: ["Boil eggs for 10 minutes.", "Peel and slice eggs.", "Serve with sliced cucumber and a pinch of salt."]),
-            Recipe(title: "Fried chicken mix", imageName: "fried_chicken", calories: 450, description: "Crispy fried chicken with a mix of spices.", ingredients: "Chicken, spices", allergies: ["Spices"], measurements: "500g chicken, 1 tsp each of paprika, garlic, salt", steps: ["Season chicken with spices.", "Heat oil in pan.", "Fry chicken until golden and crispy.", "Drain and serve."]),
-            Recipe(title: "Moi-moi and ekpa", imageName: "moi_moi_ekpa", calories: 400, description: "Classic Nigerian dish with beans and oil.", ingredients: "Beans, oil", allergies: ["None"], measurements: "1 cup blended beans, 2 tbsp red palm oil", steps: ["Mix blended beans with oil and seasonings.", "Pour into containers and steam for 45 minutes.", "Serve with plantains or rice."]),
-            Recipe(title: "Grilled veggie wrap", imageName: "veggie_wrap", calories: 270, description: "Grilled wrap with seasonal vegetables.", ingredients: "Tortilla, veggies", allergies: ["Gluten"], measurements: "1 tortilla, 1 cup mixed veggies", steps: ["Grill vegetables until tender.", "Warm tortilla and place veggies inside.", "Wrap tightly and serve."]),
-            Recipe(title: "Avocado toast", imageName: "avocado_toast", calories: 250, description: "Toasted bread topped with mashed avocado.", ingredients: "Bread, avocado", allergies: ["Gluten"], measurements: "2 slices bread, 1 ripe avocado", steps: ["Toast bread slices.", "Mash avocado with lemon and salt.", "Spread on toast and enjoy."])
-        ]
-        
-        var body: some View {
-            NavigationStack {
-                VStack(alignment: .leading) {
-                    HStack {
-                        Text("Community")
-                            .font(.largeTitle)
-                            .bold()
-                            .foregroundColor(.smartChefRed)
-                        
-                        Spacer()
-                        
-                        Button(action: {
-                            showAddRecipe = true
-                        }) {
-                            Image(systemName: "plus")
-                                .font(.title2)
-                                .padding(8)
-                                .background(Color.smartChefRed)
-                                .foregroundColor(.white)
-                                .clipShape(Circle())
-                        }
-                        .padding(.trailing)
-                    }
-                    .padding([.top, .leading])
-                    
-                    Text("Total \(recipes.count) results")
-                        .font(.headline)
-                        .padding(.horizontal)
-                        .padding(.bottom, 5)
-                    
-                    ScrollView {
-                        LazyVGrid(columns: [
-                            GridItem(.flexible()),
-                            GridItem(.flexible())
-                        ], spacing: 20) {
-                            ForEach(recipes) { recipe in
-                                NavigationLink(destination: RecipeDetailView(recipe: recipe)) {
-                                    VStack(spacing: 10) {
-                                        ZStack {
-                                            RoundedRectangle(cornerRadius: 20)
-                                                .fill(Color.white)
-                                                .shadow(radius: 4)
-                                            
-                                            VStack(spacing: 10) {
-                                                Image(recipe.imageName)
-                                                    .resizable()
-                                                    .scaledToFit()
-                                                    .frame(height: 80)
-                                                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                                                
-                                                Text(recipe.title)
-                                                    .font(.headline)
-                                                    .multilineTextAlignment(.center)
-                                                    .foregroundColor(.black)
-                                                
-                                                Text("\(recipe.calories) kcal")
-                                                    .font(.subheadline)
-                                                    .foregroundColor(.smartChefRed)
-                                                
-                                                if !recipe.allergies.isEmpty {
-                                                    Text("Allergies: \(recipe.allergies.joined(separator: ", "))")
-                                                        .font(.caption)
-                                                        .foregroundColor(.red)
-                                                }
-                                            }
-                                            .padding()
-                                        }
-                                        .frame(height: 220)
-                                    }
-                                }
-                            }
-                        }
-                        .padding(.horizontal)
-                    }
-                }
-                .sheet(isPresented: $showAddRecipe) {
-                    Text("Share a new recipe (Coming soon)")
-                        .font(.title)
-                        .padding()
-                }
-            }
-        }
-    }
-    
-    
-    
+}
+
     struct CreateRecipeView: View {
         @State private var navigateToPrompt = false
         
@@ -552,18 +700,37 @@ struct ChatGPTPromptView: View {
         let formattedIngredients = filledIngredients
             .map { "\($0.amount) \($0.unit) \($0.name)" }
             .joined(separator: ", ")
+
+
         let prompt = """
-        Validate if the following are real ingredients: \(formattedIngredients).
-        Then create a \(dietType) recipe using these ingredients.
-        Provide detailed cooking instructions and include macros (Calories, Proteins, Carbs, Fats). Mention that the macros are approximate.
+        Check if all the following are valid cooking ingredients: \(formattedIngredients).
+
+
+        If **any** ingredient is invalid, reply ONLY with:
+        "❌ Invalid ingredient detected: [list invalid items]"
+
+
+        ❗️Do NOT suggest a recipe or provide any further output if ingredients are invalid.
+
+
+        If all ingredients are valid, then:
+        - Provide a recipe title
+        - List ingredients
+        - Include numbered instructions
+        - List macros (Calories, Proteins, Carbs, Fats)
         """
+
 
         ChatGPTService.shared.generateRecipe(prompt: prompt) { response in
             DispatchQueue.main.async {
                 if let recipe = response {
-                    self.generatedRecipe = recipe
-                    self.previousRecipes.append(recipe)
-                    saveRecipeToDatabase(recipe)
+                    if recipe.contains("❌ Invalid ingredient detected") {
+                        self.generatedRecipe = recipe // Just show the warning
+                    } else {
+                        self.generatedRecipe = recipe
+                        self.previousRecipes.append(recipe)
+                        saveRecipeToDatabase(recipe)
+                    }
                 } else {
                     self.generatedRecipe = "⚠️ Failed to generate recipe. Please try again later."
                 }
@@ -571,6 +738,12 @@ struct ChatGPTPromptView: View {
             }
         }
     }
+
+
+
+
+
+
 
     func saveRecipeToDatabase(_ recipe: String) {
         guard let uid = Auth.auth().currentUser?.uid else { return }
@@ -907,12 +1080,10 @@ struct ProfileView: View {
                         }
                         
                         
-                        Spacer().frame(height: 100) // Space for logout button
+                        Spacer().frame(height: 100)
                     }
                 }
                 
-                
-                // Log Out Button at bottom
                 VStack {
                     Button {
                         isAuthenticated = false
@@ -938,9 +1109,6 @@ struct ProfileView: View {
             .navigationTitle("Profile")
             .navigationBarTitleDisplayMode(.inline)
             .background(Color.white.edgesIgnoringSafeArea(.all))
-            
-            
-            // Navigation destinations
             NavigationLink(destination: EditProfileView(), tag: "EditProfile", selection: $navigateTo) { EmptyView() }
             NavigationLink(destination: FavoritesView(), tag: "Favorites", selection: $navigateTo) { EmptyView() }
             NavigationLink(destination: MyPostsView(), tag: "MyPosts", selection: $navigateTo) { EmptyView() }
@@ -961,7 +1129,6 @@ struct ProfileView: View {
             }
     }
 }
-
 
 // MARK: - Profile Row UI
 struct ProfileRow: View {
@@ -984,7 +1151,6 @@ struct ProfileRow: View {
         .padding(.horizontal)
     }
 }
-
 
 // MARK: - Placeholder Views
 
@@ -1070,8 +1236,6 @@ struct ProfileRow: View {
     func saveProfileChanges() {
         errorMessage = ""
         successMessage = ""
-
-        // Handle password validation if fields are not empty
         if !newPassword.isEmpty || !confirmPassword.isEmpty {
             if newPassword != confirmPassword {
                 errorMessage = "Passwords do not match."
@@ -1120,13 +1284,13 @@ struct ProfileRow: View {
         }
     }
 }
-
 struct FavoritesView: View {
-    @State private var recipes: [(id: String, text: String)] = []
+    @State private var recipes: [(id: String, recipe: Recipe)] = []
     @State private var isLoading = true
     @State private var errorMessage = ""
     @State private var isSelectionMode = false
     @State private var selectedIDs: Set<String> = []
+
 
     var body: some View {
         NavigationStack {
@@ -1143,35 +1307,34 @@ struct FavoritesView: View {
                         .padding()
                 } else {
                     ScrollView {
-                        ForEach(recipes, id: \.id) { recipe in
-                            HStack {
-                                if isSelectionMode {
-                                    Image(systemName: selectedIDs.contains(recipe.id) ? "checkmark.circle.fill" : "circle")
-                                        .foregroundColor(.smartChefRed)
-                                        .onTapGesture {
-                                            toggleSelection(for: recipe.id)
-                                        }
-                                }
+                        LazyVStack(spacing: 12) {
+                            ForEach(recipes, id: \.id) { item in
+                                HStack(alignment: .top) {
+                                    if isSelectionMode {
+                                        Image(systemName: selectedIDs.contains(item.id) ? "checkmark.circle.fill" : "circle")
+                                            .foregroundColor(.smartChefRed)
+                                            .onTapGesture {
+                                                toggleSelection(for: item.id)
+                                            }
+                                    }
 
-                                VStack(alignment: .leading, spacing: 5) {
-                                    Text(recipe.text)
-                                        .padding()
-                                        .background(Color.smartChefLightGray)
-                                        .cornerRadius(12)
-                                }
 
-                                Spacer()
+                                    NavigationLink(destination: RecipeDetailView(recipe: item.recipe)) {
+                                        RecipeCardView(recipe: item.recipe)
+                                    }
+                                }
+                                .padding(.horizontal)
                             }
-                            .padding(.horizontal)
                         }
                     }
                 }
+
 
                 if isSelectionMode && !selectedIDs.isEmpty {
                     Button(role: .destructive) {
                         deleteSelectedFavorites()
                     } label: {
-                        Label("Delete Selected", systemImage: "trash")
+                        Label("Delete", systemImage: "trash")
                             .frame(maxWidth: .infinity)
                             .padding()
                             .background(Color.red.opacity(0.9))
@@ -1204,7 +1367,8 @@ struct FavoritesView: View {
         }
     }
 
-    // MARK: - Firebase Fetch
+
+    // MARK: - Load from Firebase
     func fetchFavorites() {
         guard let uid = Auth.auth().currentUser?.uid else {
             self.errorMessage = "User not authenticated."
@@ -1212,14 +1376,39 @@ struct FavoritesView: View {
             return
         }
 
-        let ref = Database.database().reference().child("favored_recipes").child(uid)
+
+        let ref = Database.database().reference().child("users").child(uid).child("favorites")
         ref.observeSingleEvent(of: .value) { snapshot in
-            var loaded: [(id: String, text: String)] = []
+            var loaded: [(id: String, recipe: Recipe)] = []
+
+
             for child in snapshot.children {
                 if let snap = child as? DataSnapshot,
                    let dict = snap.value as? [String: Any],
-                   let recipeText = dict["recipe"] as? String {
-                    loaded.append((id: snap.key, text: recipeText))
+                   let title = dict["title"] as? String,
+                   let calories = dict["calories"] as? Int,
+                   let description = dict["description"] as? String,
+                   let ingredients = dict["ingredients"] as? String,
+                   let measurements = dict["measurements"] as? String,
+                   let steps = dict["steps"] as? [String],
+                   let macros = dict["macros"] as? String {
+                    
+                    let allergies = dict["allergies"] as? [String] ?? []
+                    let imageName = dict["imageName"] as? String
+
+
+                    let recipe = Recipe(
+                        title: title,
+                        imageName: imageName,
+                        calories: calories,
+                        description: description,
+                        ingredients: ingredients,
+                        allergies: allergies,
+                        measurements: measurements,
+                        steps: steps,
+                        macros: macros
+                    )
+                    loaded.append((id: snap.key, recipe: recipe))
                 }
             }
             self.recipes = loaded.reversed()
@@ -1230,6 +1419,7 @@ struct FavoritesView: View {
         }
     }
 
+
     // MARK: - Selection
     func toggleSelection(for id: String) {
         if selectedIDs.contains(id) {
@@ -1239,16 +1429,18 @@ struct FavoritesView: View {
         }
     }
 
+
     // MARK: - Delete
     func deleteSelectedFavorites() {
         guard let uid = Auth.auth().currentUser?.uid else { return }
+        let ref = Database.database().reference().child("users").child(uid).child("favorites")
 
-        let ref = Database.database().reference().child("favored_recipes").child(uid)
+
         for id in selectedIDs {
             ref.child(id).removeValue()
         }
 
-        // Remove locally
+
         recipes.removeAll { selectedIDs.contains($0.id) }
         selectedIDs.removeAll()
         isSelectionMode = false
@@ -1256,19 +1448,153 @@ struct FavoritesView: View {
 }
 
 
-
-
 struct MyPostsView: View {
+    @State private var posts: [(id: String, recipe: String)] = []
+    @State private var selectedPosts: Set<String> = []
+    @State private var isLoading = true
+    @State private var errorMessage = ""
+    @State private var isSelecting = false
+
     var body: some View {
         VStack {
-            Text("Your Shared Posts")
-                .font(.largeTitle)
-                .padding()
-            // Populate user's shared posts here
+            HStack {
+                Text("Your Shared Posts")
+                    .font(.largeTitle)
+                    .bold()
+                    .foregroundColor(.smartChefRed)
+                Spacer()
+                if !posts.isEmpty {
+                    Button(action: {
+                        isSelecting.toggle()
+                        selectedPosts.removeAll()
+                    }) {
+                        Text(isSelecting ? "Cancel" : "Select")
+                            .foregroundColor(.blue)
+                    }
+                }
+            }
+            .padding([.horizontal, .top])
+
+            if isSelecting && !selectedPosts.isEmpty {
+                Button(action: deleteSelectedPosts) {
+                    Label("Delete", systemImage: "trash")
+                        .foregroundColor(.white)
+                        .padding()
+                        .background(Color.red)
+                        .cornerRadius(10)
+                        .padding(.horizontal)
+                }
+            }
+
+            if isLoading {
+                ProgressView("Loading...")
+                    .padding()
+            } else if !errorMessage.isEmpty {
+                Text(errorMessage)
+                    .foregroundColor(.red)
+                    .padding()
+            } else if posts.isEmpty {
+                Text("You haven't shared any recipes yet.")
+                    .foregroundColor(.gray)
+                    .padding()
+            } else {
+                ScrollView {
+                    ForEach(posts, id: \.id) { post in
+                        HStack(alignment: .top) {
+                            VStack(alignment: .leading) {
+                                Text(post.recipe)
+                                    .padding()
+                                    .background(Color.smartChefLightGray)
+                                    .cornerRadius(12)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            if isSelecting {
+                                Button(action: {
+                                    toggleSelection(post.id)
+                                }) {
+                                    Image(systemName: selectedPosts.contains(post.id) ? "checkmark.circle.fill" : "circle")
+                                        .foregroundColor(selectedPosts.contains(post.id) ? .red : .gray)
+                                        .padding(.top, 12)
+                                }
+                            }
+                        }
+                        .padding(.horizontal)
+                    }
+                }
+            }
             Spacer()
         }
+        .onAppear(perform: fetchMyPosts)
     }
+
+    func fetchMyPosts() {
+        guard let uid = Auth.auth().currentUser?.uid else {
+            errorMessage = "User not authenticated."
+            isLoading = false
+            return
+        }
+
+        let ref = Database.database().reference().child("users").child(uid).child("myPosts")
+        ref.observeSingleEvent(of: .value) { snapshot in
+            var loadedPosts: [(id: String, recipe: String)] = []
+
+            for child in snapshot.children {
+                if let snap = child as? DataSnapshot,
+                   let dict = snap.value as? [String: Any],
+                   let recipe = dict["recipe"] as? String {
+                    loadedPosts.append((id: snap.key, recipe: recipe))
+                }
+            }
+
+            self.posts = loadedPosts.reversed()
+            self.isLoading = false
+        } withCancel: { error in
+            self.errorMessage = "Failed to fetch posts: \(error.localizedDescription)"
+            self.isLoading = false
+        }
+    }
+
+    func toggleSelection(_ id: String) {
+        if selectedPosts.contains(id) {
+            selectedPosts.remove(id)
+        } else {
+            selectedPosts.insert(id)
+        }
+    }
+
+ func deleteSelectedPosts() {
+    guard let uid = Auth.auth().currentUser?.uid else { return }
+
+    let userRef = Database.database().reference().child("users").child(uid).child("myPosts")
+    let communityRef = Database.database().reference().child("community_recipes")
+
+    for id in selectedPosts {
+    
+        if let recipeText = posts.first(where: { $0.id == id })?.recipe {
+            
+            userRef.child(id).removeValue()
+
+            communityRef.observeSingleEvent(of: .value) { snapshot in
+                for child in snapshot.children {
+                    if let snap = child as? DataSnapshot,
+                       let dict = snap.value as? [String: Any],
+                       let recipe = dict["recipe"] as? String,
+                       recipe == recipeText {
+                        communityRef.child(snap.key).removeValue()
+                    }
+                }
+            }
+        }
+    }
+
+    posts.removeAll { selectedPosts.contains($0.id) }
+    selectedPosts.removeAll()
+    isSelecting = false
 }
+
+
+}
+
 
 
 struct HelpView: View {
@@ -1288,86 +1614,57 @@ struct HelpView: View {
     
     
     
+struct ResetPasswordView: View {
+    @State private var email = ""
+    @State private var message = ""
     
-    // MARK: - Password Reset & Confirmation
-    struct ResetPasswordView: View {
-        @State private var email: String = ""
-        @State private var isEmailValid: Bool = false
-        @State private var errorMessage: String = ""
-        var body: some View {
-            NavigationStack {
-                VStack {
-                    Text("SMARTCHEF")
-                        .font(.largeTitle)
-                        .bold()
-                        .foregroundColor(.red)
-                        .padding(.bottom, 40)
-                    TextField("Enter your email", text: $email)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .padding()
-                    if !errorMessage.isEmpty {
-                        Text(errorMessage)
-                            .foregroundColor(.red)
-                            .padding()
-                    }
-                    Button(action: {
-                        validateEmail()
-                    }) {
-                        Text("Send Reset Email")
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.red)
-                            .foregroundColor(.white)
-                            .cornerRadius(10)
-                            .padding(.horizontal)
-                    }
-                    NavigationLink("", destination: ConfirmationView(), isActive: $isEmailValid)
-                }
-                .padding()
+    var body: some View {
+        VStack(spacing: 20) {
+            Text("Reset Your Password")
+                .font(.title)
+                .bold()
+                .foregroundColor(.smartChefRed)
+
+            TextField("Enter your email", text: $email)
+                .textFieldStyle(RoundedBorderTextFieldStyle())
+                .padding(.horizontal)
+
+            Button("Send Reset Email") {
+                sendPasswordReset()
             }
+            .frame(maxWidth: .infinity)
+            .padding()
+            .background(Color.smartChefRed)
+            .foregroundColor(.white)
+            .cornerRadius(10)
+            .padding(.horizontal)
+
+            if !message.isEmpty {
+                Text(message)
+                    .foregroundColor(.blue)
+                    .multilineTextAlignment(.center)
+                    .padding()
+            }
+
+            Spacer()
         }
-        func validateEmail() {
-            if isValidEmail(email) {
-                isEmailValid = true
+        .padding()
+    }
+
+    func sendPasswordReset() {
+        Auth.auth().sendPasswordReset(withEmail: email) { error in
+            if let error = error {
+                message = "❌ Error: \(error.localizedDescription)"
             } else {
-                errorMessage = "Invalid email format. Please enter a valid email."
+                message = "✅ Password reset email sent. Please check your inbox."
             }
         }
     }
-    struct ConfirmationView: View {
-        var body: some View {
-            NavigationStack {
-                VStack {
-                    Text("SMARTCHEF")
-                        .font(.largeTitle)
-                        .bold()
-                        .foregroundColor(.red)
-                        .padding()
-                    Text("The Email has been sent!")
-                        .multilineTextAlignment(.center)
-                        .padding()
-                    Image(systemName: "checkmark.circle.fill")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 100, height: 100)
-                        .foregroundColor(.red)
-                        .padding()
-                    NavigationLink(destination: SignInView()) {
-                        Text("Sign in")
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.red)
-                            .foregroundColor(.white)
-                            .cornerRadius(10)
-                            .padding(.horizontal)
-                    }
-                }
-                .padding()
-            }
-        }
-    }
+}
+
+
 func isValidEmail(_ email: String) -> Bool {
-    let allowedDomains = ["gmail.com", "outlook.com", "hotmail.com", "icloud.com", "yahoo.com"]
+    let allowedDomains = ["gmail.com", "outlook.com", "hotmail.com", "icloud.com", "yahoo.com", "psu.edu.sa"]
     guard let domain = email.split(separator: "@").last else { return false }
     return allowedDomains.contains(String(domain))
 }
@@ -1380,16 +1677,110 @@ func isValidUsername(_ username: String) -> Bool {
 }
 
 
+struct ShareRecipeFromPreviousView: View {
+    @Environment(\.dismiss) var dismiss
+    @State private var previousRecipes: [(id: String, text: String)] = []
+    @State private var isLoading = true
+    @State private var errorMessage = ""
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 20) {
+                Text("Select Recipe to Share")
+                    .font(.title2)
+                    .bold()
+                    .padding(.top)
+
+                if isLoading {
+                    ProgressView("Loading recipes...")
+                        .padding()
+                } else if !errorMessage.isEmpty {
+                    Text(errorMessage)
+                        .foregroundColor(.red)
+                        .padding()
+                } else if previousRecipes.isEmpty {
+                    Text("No recipes to share.")
+                        .foregroundColor(.gray)
+                        .padding()
+                } else {
+                    ScrollView {
+                        ForEach(previousRecipes, id: \.id) { recipe in
+                            VStack(alignment: .leading, spacing: 10) {
+                                Text(recipe.text)
+                                    .padding()
+                                    .background(Color.smartChefLightGray)
+                                    .cornerRadius(12)
+
+                                Button("Post to Community") {
+                                    postToCommunity(recipeText: recipe.text)
+                                }
+                                .font(.subheadline)
+                                .frame(maxWidth: .infinity)
+                                .padding(8)
+                                .background(Color.smartChefRed)
+                                .foregroundColor(.white)
+                                .cornerRadius(8)
+                            }
+                            .padding(.horizontal)
+                        }
+                    }
+                }
+            }
+            .padding()
+            .onAppear {
+                fetchPreviousRecipes()
+            }
+        }
+    }
+
+    func fetchPreviousRecipes() {
+        guard let uid = Auth.auth().currentUser?.uid else {
+            errorMessage = "User not authenticated."
+            isLoading = false
+            return
+        }
+
+        let ref = Database.database().reference().child("past_recipes").child(uid)
+        ref.observeSingleEvent(of: .value) { snapshot in
+            var loaded: [(id: String, text: String)] = []
+            for child in snapshot.children {
+                if let snap = child as? DataSnapshot,
+                   let dict = snap.value as? [String: Any],
+                   let recipeText = dict["recipe"] as? String {
+                    loaded.append((id: snap.key, text: recipeText))
+                }
+            }
+            self.previousRecipes = loaded.reversed()
+            self.isLoading = false
+        } withCancel: { error in
+            self.errorMessage = "Failed to load recipes: \(error.localizedDescription)"
+            self.isLoading = false
+        }
+    }
+
+    func postToCommunity(recipeText: String) {
+        guard let uid = Auth.auth().currentUser?.uid else { return }
+        let ref = Database.database().reference()
+        let postId = ref.child("community_recipes").childByAutoId().key ?? UUID().uuidString
+
+        let recipeData = [
+            "recipe": recipeText,
+            "userId": uid,
+            "timestamp": Date().timeIntervalSince1970
+        ] as [String: Any]
+
+        // Save to community
+        ref.child("community_recipes").child(postId).setValue(recipeData)
+
+        ref.child("users").child(uid).child("myPosts").child(postId).setValue(recipeData)
+
+        dismiss()
+    }
+}
+
     // MARK: - Preview
     #Preview {
         ContentView()
     }
 
     
-    
-    
-    
-    
-    
-    
-
